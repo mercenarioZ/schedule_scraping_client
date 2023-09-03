@@ -9,37 +9,54 @@ function App() {
     })
 
     const [message, setMessage] = React.useState('')
+    const [responseData, setResponseData] = React.useState([])
 
     const handleInputChange = (event) => {
         const { name, value } = event.target
         setFormData({ ...formData, [name]: value })
     }
 
+    const clearLocalStorage = () => {
+        localStorage.clear()
+    }
+
     const onSubmit = async (event) => {
-        event.preventDefault()
+        event.preventDefault() // Prevent default submission
+        const storedData = localStorage.getItem(formData.username)
 
-        const dataToSend = {
-            username: formData.username,
-            password: formData.password,
-        }
-        console.log(dataToSend)
+        if (storedData) {
+            const parsedData = JSON.parse(storedData)
+            setResponseData(parsedData)
+            console.log(parsedData)
+        } else {
+            const dataToSend = {
+                username: formData.username,
+                password: formData.password,
+            }
+            console.log(dataToSend)
 
-        // Post data to server
-        try {
-            const response = await axios.post(
-                'http://localhost:8080/',
-                dataToSend
-            )
+            // Post data to server
+
+            const response = await axios
+                .post('http://localhost:8080/', dataToSend)
+                .then((res) => {
+                    setResponseData(res.data)
+                    localStorage.setItem(
+                        formData.username,
+                        JSON.stringify(res.data)
+                    )
+                    console.log(res.data)
+                    return res // Return this response in order to use it in the next then
+                })
+                .catch((error) => {
+                    console.log(error)
+                })
+
             if (response.status === 200) {
                 setMessage('Scraping sucessfully!')
+            } else if (response.status === 401) {
+                setMessage('Error scraping! Check your credentials.')
             }
-
-            console.log('Server response:', response.data)
-        } catch (error) {
-            setMessage(
-                'Something went wrong! Maybe your username or password was incorrect.'
-            )
-            console.log(error)
         }
     }
 
@@ -66,17 +83,24 @@ function App() {
                         type='password'
                         name='password'
                         id='password'
-                        required
                         onChange={handleInputChange}
                     />
                 </div>
 
-                <button
-                    className='submit-btn'
-                    type='submit'
-                >
-                    Start scraping!
-                </button>
+                <div className='button-wrapper'>
+                    <button
+                        className='submit-btn'
+                        type='submit'
+                    >
+                        Start scraping!
+                    </button>
+                    <button
+                        className='clear-data-btn'
+                        onClick={clearLocalStorage}
+                    >
+                        Clear all local data
+                    </button>
+                </div>
             </form>
 
             {message && (
